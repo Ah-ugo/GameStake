@@ -74,7 +74,7 @@ export default function WithdrawScreen() {
         "Your withdrawal request has been submitted. Once processed by admin, the funds will be transferred to your bank account.",
         [{ text: "OK", onPress: () => router.back() }]
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setError(
         err.response?.data?.detail ||
@@ -165,7 +165,7 @@ export default function WithdrawScreen() {
             />
           </View>
 
-          <View style={styles.formField}>
+          {/* <View style={styles.formField}>
             <Text style={styles.fieldLabel}>Routing Number</Text>
             <TextInput
               style={styles.fieldInput}
@@ -175,7 +175,7 @@ export default function WithdrawScreen() {
               placeholderTextColor="#9e9e9e"
               keyboardType="numeric"
             />
-          </View>
+          </View> */}
         </Animated.View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}

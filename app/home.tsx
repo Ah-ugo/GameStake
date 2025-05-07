@@ -1,14 +1,20 @@
 "use client";
 
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
+import { useWallet } from "@/context/wallet-context";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   Image,
+  ImageBackground,
   RefreshControl,
   StyleSheet,
   Text,
@@ -16,15 +22,19 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../context/auth-context";
-import { useToast } from "../context/toast-context";
-import { useWallet } from "../context/wallet-context";
+
+const { width, height } = Dimensions.get("window");
 
 const games = [
   {
@@ -33,6 +43,7 @@ const games = [
     icon: require("../assets/images/games/coin-toss.png"),
     route: "/games/coin-toss",
     color: ["#FF9500", "#FF5E3A"],
+    hot: true,
   },
   {
     id: "2",
@@ -40,6 +51,7 @@ const games = [
     icon: require("../assets/images/games/dice-roll.png"),
     route: "/games/dice-roll",
     color: ["#52E5E7", "#130CB7"],
+    featured: true,
   },
   {
     id: "3",
@@ -61,6 +73,7 @@ const games = [
     icon: require("../assets/images/games/card-draw.png"),
     route: "/games/card-draw",
     color: ["#7367F0", "#CE9FFC"],
+    hot: true,
   },
   {
     id: "6",
@@ -75,6 +88,7 @@ const games = [
     icon: require("../assets/images/games/wheel-spin.png"),
     route: "/games/wheel-spin",
     color: ["#00C9FF", "#92FE9D"],
+    featured: true,
   },
   {
     id: "8",
@@ -82,6 +96,7 @@ const games = [
     icon: require("../assets/images/games/slot-machine.png"),
     route: "/games/slot-machine",
     color: ["#FC466B", "#3F5EFB"],
+    hot: true,
   },
   {
     id: "9",
@@ -89,6 +104,7 @@ const games = [
     icon: require("../assets/images/games/blackjack.png"),
     route: "/games/blackjack",
     color: ["#3F2B96", "#A8C0FF"],
+    featured: true,
   },
   {
     id: "10",
@@ -96,14 +112,8 @@ const games = [
     icon: require("../assets/images/games/roulette.png"),
     route: "/games/roulette",
     color: ["#11998E", "#38EF7D"],
+    hot: true,
   },
-  // {
-  //   id: "11",
-  //   name: "Whot",
-  //   icon: require("../assets/images/games/whot.png"),
-  //   route: "/games/whot",
-  //   color: ["#11998E", "#38EF7D"],
-  // },
 ];
 
 export default function HomeScreen() {
@@ -113,15 +123,63 @@ export default function HomeScreen() {
   const { showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
   const balanceScale = useSharedValue(1);
+  const featuredGameIndex = useSharedValue(0);
+  const featuredGames = games.filter((game) => game.featured);
+  const hotGames = games.filter((game) => game.hot);
 
-  const balanceStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: balanceScale.value }],
-    };
-  });
+  // Animation values
+  const playButtonScale = useSharedValue(1);
+  const coinRotate = useSharedValue(0);
+  const diceRotate = useSharedValue(0);
+  const slotMachineShake = useSharedValue(0);
 
   useEffect(() => {
     loadData();
+
+    // Start animations
+    playButtonScale.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { duration: 800, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 800, easing: Easing.in(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+
+    coinRotate.value = withRepeat(
+      withTiming(360, { duration: 2000, easing: Easing.linear }),
+      -1
+    );
+
+    diceRotate.value = withRepeat(
+      withSequence(
+        withTiming(45, { duration: 500 }),
+        withTiming(-45, { duration: 500 }),
+        withTiming(0, { duration: 500 })
+      ),
+      -1
+    );
+
+    slotMachineShake.value = withRepeat(
+      withSequence(
+        withTiming(5, { duration: 100 }),
+        withTiming(-5, { duration: 100 }),
+        withTiming(5, { duration: 100 }),
+        withTiming(0, { duration: 100 }),
+        withDelay(2000, withTiming(0, { duration: 0 }))
+      ),
+      -1
+    );
+
+    // Auto-rotate featured games
+    const interval = setInterval(() => {
+      featuredGameIndex.value = withTiming(
+        (featuredGameIndex.value + 1) % featuredGames.length,
+        { duration: 500 }
+      );
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
@@ -163,71 +221,137 @@ export default function HomeScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await logout();
-      router.push("/auth/login");
     } catch (error) {
       showToast("Failed to logout", "error");
     }
   };
 
-  function truncateText(text: any) {
-    return text.length > 6 ? text.substring(0, 6) + "..." : text;
-  }
+  const playButtonAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: playButtonScale.value }],
+    };
+  });
+
+  const coinAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotateY: `${coinRotate.value}deg` }],
+    };
+  });
+
+  const diceAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${diceRotate.value}deg` }],
+    };
+  });
+
+  const slotMachineAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: slotMachineShake.value }],
+    };
+  });
+
+  const balanceStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: balanceScale.value }],
+    };
+  });
+
+  const renderFeaturedGame = () => {
+    const currentIndex = Math.floor(featuredGameIndex.value);
+    const game = featuredGames[currentIndex];
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleGamePress(game.route)}
+        activeOpacity={0.8}
+        style={styles.featuredGameContainer}
+      >
+        <ImageBackground
+          source={require("../assets/images/featured-bg.png")}
+          style={styles.featuredBackground}
+          imageStyle={{ borderRadius: 20 }}
+        >
+          <LinearGradient
+            colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.8)"]}
+            style={styles.featuredGradient}
+          >
+            <View style={styles.featuredContent}>
+              <Image source={game.icon} style={styles.featuredIcon} />
+              <View style={styles.featuredTextContainer}>
+                <Text style={styles.featuredTitle}>{game.name}</Text>
+                <Text style={styles.featuredSubtitle}>FEATURED GAME</Text>
+              </View>
+              <Animated.View
+                style={[styles.playNowButton, playButtonAnimatedStyle]}
+              >
+                <LinearGradient
+                  colors={game.color}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.playNowGradient}
+                >
+                  <Text style={styles.playNowText}>PLAY</Text>
+                </LinearGradient>
+              </Animated.View>
+            </View>
+          </LinearGradient>
+        </ImageBackground>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderHotGame = ({ item, index }: any) => {
+    let animatedStyle = {};
+
+    if (item.name === "Coin Toss") {
+      animatedStyle = coinAnimatedStyle;
+    } else if (item.name === "Dice Roll") {
+      animatedStyle = diceAnimatedStyle;
+    } else if (item.name === "Slot Machine") {
+      animatedStyle = slotMachineAnimatedStyle;
+    }
+
+    return (
+      <TouchableOpacity
+        onPress={() => handleGamePress(item.route)}
+        style={styles.hotGameCard}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={item.color}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hotGameGradient}
+        >
+          <Animated.View style={[styles.hotGameIconContainer, animatedStyle]}>
+            <Image source={item.icon} style={styles.hotGameIcon} />
+          </Animated.View>
+          <Text style={styles.hotGameName}>{item.name}</Text>
+          <View style={styles.hotLabel}>
+            <Text style={styles.hotLabelText}>HOT</Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar style="light" />
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Hello, {user?.username || "User"}</Text>
-          <Text style={styles.subtitle}>Ready to test your luck?</Text>
+
+      <LinearGradient colors={["#1a1a2e", "#121212"]} style={styles.background}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>
+              Hey, {user?.username || "Player"}
+            </Text>
+            <Text style={styles.subtitle}>Ready to win big today?</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={24} color="#ffffff" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={24} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
 
-      <Animated.View style={[styles.balanceCard, balanceStyle]}>
-        <LinearGradient
-          colors={["#6a11cb", "#2575fc"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.balanceGradient}
-        >
-          <View style={styles.balanceContent}>
-            <Text style={styles.balanceLabel}>Your Balance</Text>
-            <Text style={styles.balanceAmount}>₦{balance.toFixed(2)}</Text>
-          </View>
-          <View style={styles.balanceActions}>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/wallet/deposit");
-              }}
-              style={styles.balanceButton}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
-              <Text style={styles.balanceButtonText}>Deposit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/wallet/withdraw");
-              }}
-              style={styles.balanceButton}
-            >
-              <Ionicons
-                name="arrow-down-circle-outline"
-                size={20}
-                color="#ffffff"
-              />
-              <Text style={styles.balanceButtonText}>Withdraw</Text>
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      <View style={styles.gamesSection}>
-        <Text style={styles.sectionTitle}>Games</Text>
         <FlatList
           data={games}
           keyExtractor={(item) => item.id}
@@ -243,6 +367,90 @@ export default function HomeScreen() {
               colors={["#ffffff"]}
             />
           }
+          ListHeaderComponent={() => (
+            <View>
+              <Animated.View style={[styles.balanceCard, balanceStyle]}>
+                <BlurView
+                  intensity={20}
+                  tint="dark"
+                  style={styles.blurContainer}
+                >
+                  <LinearGradient
+                    colors={[
+                      "rgba(106, 17, 203, 0.8)",
+                      "rgba(37, 117, 252, 0.8)",
+                    ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.balanceGradient}
+                  >
+                    <View style={styles.balanceContent}>
+                      <Text style={styles.balanceLabel}>Your Balance</Text>
+                      <Text style={styles.balanceAmount}>
+                        ₦{balance.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.balanceActions}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(
+                            Haptics.ImpactFeedbackStyle.Light
+                          );
+                          router.push("/wallet/deposit");
+                        }}
+                        style={styles.balanceButton}
+                      >
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={20}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.balanceButtonText}>Deposit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          Haptics.impactAsync(
+                            Haptics.ImpactFeedbackStyle.Light
+                          );
+                          router.push("/wallet/withdraw");
+                        }}
+                        style={styles.balanceButton}
+                      >
+                        <Ionicons
+                          name="arrow-down-circle-outline"
+                          size={20}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.balanceButtonText}>Withdraw</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
+                </BlurView>
+              </Animated.View>
+
+              {renderFeaturedGame()}
+
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Hot Games</Text>
+                {/* <TouchableOpacity>
+                  <Text style={styles.seeAllText}>See All</Text>
+                </TouchableOpacity> */}
+              </View>
+
+              <FlatList
+                data={hotGames}
+                keyExtractor={(item) => `hot-${item.id}`}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hotGamesList}
+                renderItem={renderHotGame}
+              />
+
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>All Games</Text>
+              </View>
+            </View>
+          )}
           renderItem={({ item, index }) => (
             <Animated.View
               entering={FadeInDown.delay(index * 100)
@@ -253,6 +461,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 onPress={() => handleGamePress(item.route)}
                 style={{ flex: 1 }}
+                activeOpacity={0.7}
               >
                 <LinearGradient
                   colors={item.color}
@@ -261,13 +470,23 @@ export default function HomeScreen() {
                   style={styles.gameGradient}
                 >
                   <Image source={item.icon} style={styles.gameIcon} />
-                  <Text style={styles.gameName}>{truncateText(item.name)}</Text>
+                  <Text style={styles.gameName}>{item.name}</Text>
+                  {item.hot && (
+                    <View style={styles.gameTag}>
+                      <Text style={styles.gameTagText}>HOT</Text>
+                    </View>
+                  )}
+                  {item.featured && (
+                    <View style={[styles.gameTag, styles.featuredTag]}>
+                      <Text style={styles.gameTagText}>FEATURED</Text>
+                    </View>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
           )}
         />
-      </View>
+      </LinearGradient>
 
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -309,6 +528,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#121212",
   },
+  background: {
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -334,6 +556,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     marginBottom: 24,
+  },
+  blurContainer: {
+    borderRadius: 16,
+    overflow: "hidden",
   },
   balanceGradient: {
     borderRadius: 16,
@@ -370,15 +596,121 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
     marginLeft: 6,
   },
-  gamesSection: {
+  featuredGameContainer: {
+    marginHorizontal: 20,
+    height: 180,
+    borderRadius: 20,
+    marginBottom: 24,
+    overflow: "hidden",
+  },
+  featuredBackground: {
+    width: "100%",
+    height: "100%",
+  },
+  featuredGradient: {
     flex: 1,
+    justifyContent: "flex-end",
+    padding: 16,
+  },
+  featuredContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  featuredIcon: {
+    width: 60,
+    height: 60,
+    marginRight: 12,
+  },
+  featuredTextContainer: {
+    flex: 1,
+  },
+  featuredTitle: {
+    fontSize: 24,
+    fontFamily: "Poppins-Bold",
+    color: "#ffffff",
+  },
+  featuredSubtitle: {
+    fontSize: 12,
+    fontFamily: "Poppins-SemiBold",
+    color: "#52E5E7",
+  },
+  playNowButton: {
+    width: 80,
+    height: 40,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  playNowGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playNowText: {
+    color: "#ffffff",
+    fontFamily: "Poppins-Bold",
+    fontSize: 16,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 20,
     fontFamily: "Poppins-Bold",
     color: "#ffffff",
-    marginBottom: 16,
+  },
+  seeAllText: {
+    fontSize: 14,
+    fontFamily: "Poppins-SemiBold",
+    color: "#2575fc",
+  },
+  hotGamesList: {
+    paddingLeft: 20,
+    paddingRight: 10,
+    marginBottom: 24,
+  },
+  hotGameCard: {
+    width: 140,
+    height: 180,
+    marginRight: 10,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  hotGameGradient: {
+    flex: 1,
+    padding: 12,
+    justifyContent: "space-between",
+  },
+  hotGameIconContainer: {
+    alignItems: "center",
+    marginTop: 10,
+  },
+  hotGameIcon: {
+    width: 70,
+    height: 70,
+  },
+  hotGameName: {
+    fontSize: 16,
+    fontFamily: "Poppins-SemiBold",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  hotLabel: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "rgba(255, 59, 48, 0.8)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  hotLabelText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontFamily: "Poppins-Bold",
   },
   gamesList: {
     paddingBottom: 80,
@@ -395,18 +727,39 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
+    padding: 8,
   },
   gameIcon: {
     width: 48,
     height: 48,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   gameName: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Poppins-SemiBold",
     color: "#ffffff",
     textAlign: "center",
+  },
+  gameTag: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    backgroundColor: "rgba(255, 59, 48, 0.8)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  featuredTag: {
+    backgroundColor: "rgba(82, 229, 231, 0.8)",
+  },
+  gameTagText: {
+    color: "#ffffff",
+    fontSize: 8,
+    fontFamily: "Poppins-Bold",
+  },
+  gameRow: {
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
   },
   tabBar: {
     flexDirection: "row",
@@ -441,8 +794,5 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
     color: "#2575fc",
     marginTop: 4,
-  },
-  gameRow: {
-    justifyContent: "space-between",
   },
 });

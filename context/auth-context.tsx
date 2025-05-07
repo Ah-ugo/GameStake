@@ -1,5 +1,3 @@
-"use client";
-
 import { api } from "@/lib/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -9,6 +7,35 @@ import {
   useEffect,
   useState,
 } from "react";
+import { Platform } from "react-native";
+
+// Platform-specific storage functions
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      return typeof window !== "undefined" ? localStorage.getItem(key) : null;
+    }
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, value);
+      }
+      return;
+    }
+    await AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(key);
+      }
+      return;
+    }
+    await AsyncStorage.removeItem(key);
+  },
+};
 
 type User = {
   id: string;
@@ -42,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const token = await AsyncStorage.getItem("token");
+        const token = await storage.getItem("token");
         if (token) {
           api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           const response = await api.get("/users/me");
@@ -50,7 +77,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       } catch (error) {
         console.error("Failed to load user", error);
-        await AsyncStorage.removeItem("token");
+        await storage.removeItem("token");
         delete api.defaults.headers.common["Authorization"];
       } finally {
         setIsLoading(false);
@@ -67,7 +94,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         new URLSearchParams({
           username: email,
           password: password,
-          grant_type: "password", // Required by FastAPI OAuth2PasswordBearer
+          grant_type: "password",
         }),
         {
           headers: {
@@ -78,7 +105,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const { access_token } = tokenResponse.data;
 
-      await AsyncStorage.setItem("token", access_token);
+      await storage.setItem("token", access_token);
       api.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
 
       const userResponse = await api.get("/users/me");
@@ -90,52 +117,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // const register = async (username: string, email: string, password: string) => {
-  //   try {
-  //     await api.post("/auth/register", {
-  //       username,
-  //       email,
-  //       password,
-  //     })
-
-  //     await login(email, password)
-  //   } catch (error: any) {
-  //     const message = error.response?.data?.detail || "Registration failed"
-  //     console.error("Registration failed:", message)
-  //     throw new Error(message)
-  //   }
-  // }
-
   const register = async (
     username: string,
     email: string,
     password: string
   ) => {
     try {
-      // 1. Client-side validation
       if (!username || !email || !password) {
         throw new Error("All fields are required");
       }
 
-      // 2. Clear previous credentials
-      await AsyncStorage.removeItem("token");
+      await storage.removeItem("token");
 
-      // 3. Make registration request
       const response = await api.post("/auth/register", {
         username: username.trim(),
         email: email.trim().toLowerCase(),
         password: password.trim(),
       });
 
-      // 4. Verify response structure
       if (!response.data?.id) {
         throw new Error("Invalid server response");
       }
 
-      // 5. Add delay for server propagation
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // 6. Attempt login with retries
       let loginAttempts = 0;
       while (loginAttempts < 3) {
         try {
@@ -154,37 +159,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       return response.data;
     } catch (error: any) {
-      // 7. Enhanced error parsing
       const errorMessage = parseRegistrationError(error);
       console.error("Registration error:", errorMessage);
       throw new Error(errorMessage);
     }
   };
 
-  // Error parser utility
   const parseRegistrationError = (error: any): string => {
     if (error.response?.data) {
       const { detail } = error.response.data;
-
-      // Handle array of validation errors
       if (Array.isArray(detail)) {
         return detail.map((err) => `${err.loc[1]} ${err.msg}`).join("\n");
       }
-
-      // Handle duplicate errors from server
       if (typeof detail === "string") {
         if (detail.includes("username")) return "Username already registered";
         if (detail.includes("email")) return "Email already registered";
         return detail;
       }
     }
-
     return error.message || "Registration failed";
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem("token");
+      await storage.removeItem("token");
       delete api.defaults.headers.common["Authorization"];
       setUser(null);
     } catch (error) {

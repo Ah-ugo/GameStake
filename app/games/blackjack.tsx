@@ -1,6 +1,5 @@
-"use client";
-
 import { useToast } from "@/context/toast-context";
+import { useWallet } from "@/context/wallet-context";
 import { api } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -11,6 +10,7 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -30,9 +30,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { G, Path, Rect, Svg, Text as SvgText } from "react-native-svg";
-import { useWallet } from "../../context/wallet-context";
 
 const { width } = Dimensions.get("window");
+
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 export default function BlackjackScreen() {
   const router = useRouter();
@@ -67,7 +71,7 @@ export default function BlackjackScreen() {
     };
   });
 
-  const animateCard = (isPlayer) => {
+  const animateCard = (isPlayer: any) => {
     const scaleValue = isPlayer ? playerCardScale : dealerCardScale;
     scaleValue.value = withSequence(
       withTiming(1.2, { duration: 200, easing: Easing.bounce }),
@@ -77,8 +81,8 @@ export default function BlackjackScreen() {
 
   const startGame = async () => {
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -120,7 +124,7 @@ export default function BlackjackScreen() {
           setGameState("playing");
         }, 500);
       }, 500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setError(
         err.response?.data?.detail || "Something went wrong. Please try again."
@@ -229,14 +233,14 @@ export default function BlackjackScreen() {
     setError("");
   };
 
-  const getCardColor = (card) => {
+  const getCardColor = (card: any) => {
     if (!card) return "#3F2B96";
     return card.includes("hearts") || card.includes("diamonds")
       ? "#F44336"
       : "#212121";
   };
 
-  const getCardSymbol = (card) => {
+  const getCardSymbol = (card: any) => {
     if (!card) return "?";
     if (card.includes("hearts")) return "♥";
     if (card.includes("diamonds")) return "♦";
@@ -245,7 +249,7 @@ export default function BlackjackScreen() {
     return "?";
   };
 
-  const getCardValue = (card) => {
+  const getCardValue = (card: any) => {
     if (!card) return "";
     return card.split(" ")[0];
   };
@@ -452,7 +456,7 @@ export default function BlackjackScreen() {
 
             {gameState === "won" && (
               <Text style={styles.amountWon}>
-                +${(Number.parseFloat(betAmount) * 2).toFixed(2)}
+                +₦{(Number.parseFloat(betAmount) * 2).toFixed(2)}
               </Text>
             )}
             {(gameState === "lost" || gameState === "busted") && (
@@ -498,13 +502,23 @@ export default function BlackjackScreen() {
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

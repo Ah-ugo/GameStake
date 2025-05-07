@@ -1,5 +1,3 @@
-"use client";
-
 import { useToast } from "@/context/toast-context";
 import { useWallet } from "@/context/wallet-context";
 import { api } from "@/lib/api";
@@ -12,6 +10,8 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -33,6 +33,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Circle, G, Svg } from "react-native-svg";
 
 const { width } = Dimensions.get("window");
+
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 export default function DiceRollScreen() {
   const router = useRouter();
@@ -87,8 +92,8 @@ export default function DiceRollScreen() {
     }
 
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -175,148 +180,160 @@ export default function DiceRollScreen() {
           <DiceSvg number={diceNumber || 1} />
         </Animated.View>
 
-        {gameState === "idle" && (
-          <Animated.View
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(300)}
-            style={styles.controlsContainer}
-          >
-            <Text style={styles.choiceLabel}>Select your number:</Text>
-            <View style={styles.numbersRow}>
-              {[1, 2, 3, 4, 5, 6].map((number) => (
-                <TouchableOpacity
-                  key={number}
-                  onPress={() => {
-                    setSelectedNumber(number);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[
-                    styles.numberButton,
-                    selectedNumber === number && styles.selectedNumber,
-                  ]}
-                >
-                  <Text
+        <ScrollView>
+          {gameState === "idle" && (
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.controlsContainer}
+            >
+              <Text style={styles.choiceLabel}>Select your number:</Text>
+              <View style={styles.numbersRow}>
+                {[1, 2, 3, 4, 5, 6].map((number) => (
+                  <TouchableOpacity
+                    key={number}
+                    onPress={() => {
+                      setSelectedNumber(number);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
                     style={[
-                      styles.numberButtonText,
-                      selectedNumber === number && styles.selectedNumberText,
+                      styles.numberButton,
+                      selectedNumber === number && styles.selectedNumber,
                     ]}
                   >
-                    {number}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.numberButtonText,
+                        selectedNumber === number && styles.selectedNumberText,
+                      ]}
+                    >
+                      {number}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <Text style={styles.betLabel}>Enter bet amount:</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.dollarSign}>₦</Text>
-              <TextInput
-                style={styles.betInput}
-                keyboardType="numeric"
-                value={betAmount}
-                onChangeText={setBetAmount}
-                placeholder="0.00"
-                placeholderTextColor="#9e9e9e"
-              />
-            </View>
+              <Text style={styles.betLabel}>Enter bet amount:</Text>
+              <View style={styles.inputContainer}>
+                <Text style={styles.dollarSign}>₦</Text>
+                <TextInput
+                  style={styles.betInput}
+                  keyboardType="numeric"
+                  value={betAmount}
+                  onChangeText={setBetAmount}
+                  placeholder="0.00"
+                  placeholderTextColor="#9e9e9e"
+                />
+              </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            <TouchableOpacity
-              onPress={handleRoll}
-              style={[styles.rollButtonContainer]}
-            >
-              <LinearGradient
-                colors={["#52E5E7", "#130CB7"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.rollButton}
-              >
-                <Text style={styles.rollButtonText}>Roll Dice</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {gameState === "playing" && (
-          <Animated.View
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(300)}
-            style={styles.loadingContainer}
-          >
-            <Text style={styles.loadingText}>Rolling dice...</Text>
-          </Animated.View>
-        )}
-
-        {(gameState === "won" || gameState === "lost") && (
-          <Animated.View
-            entering={SlideInDown.duration(500).springify()}
-            exiting={SlideOutDown.duration(500)}
-            style={styles.resultContainer}
-          >
-            <Text
-              style={[
-                styles.resultText,
-                gameState === "won"
-                  ? styles.wonResultText
-                  : styles.lostResultText,
-              ]}
-            >
-              {gameState === "won" ? "You Won!" : "You Lost!"}
-            </Text>
-            <Text style={styles.resultDetails}>
-              You chose {selectedNumber} - Dice rolled {diceNumber}
-            </Text>
-            {gameState === "won" && (
-              <Text style={styles.amountWon}>
-                +₦{(Number.parseFloat(betAmount) * 2).toFixed(2)}
-              </Text>
-            )}
-            {gameState === "lost" && (
-              <Text style={styles.amountLost}>
-                -₦{Number.parseFloat(betAmount).toFixed(2)}
-              </Text>
-            )}
-
-            <View style={styles.actionButtons}>
               <TouchableOpacity
-                onPress={resetGame}
-                style={styles.actionButtonContainer}
+                onPress={handleRoll}
+                style={[styles.rollButtonContainer]}
               >
                 <LinearGradient
-                  colors={["#6a11cb", "#2575fc"]}
+                  colors={["#52E5E7", "#130CB7"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={styles.actionButton}
+                  style={styles.rollButton}
                 >
-                  <Text style={styles.actionButtonText}>Play Again</Text>
+                  <Text style={styles.rollButtonText}>Roll Dice</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.back()}
+            </Animated.View>
+          )}
+
+          {gameState === "playing" && (
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.loadingContainer}
+            >
+              <Text style={styles.loadingText}>Rolling dice...</Text>
+            </Animated.View>
+          )}
+
+          {(gameState === "won" || gameState === "lost") && (
+            <Animated.View
+              entering={SlideInDown.duration(500).springify()}
+              exiting={SlideOutDown.duration(500)}
+              style={styles.resultContainer}
+            >
+              <Text
                 style={[
-                  styles.actionButtonContainer,
-                  styles.secondaryButtonContainer,
+                  styles.resultText,
+                  gameState === "won"
+                    ? styles.wonResultText
+                    : styles.lostResultText,
                 ]}
               >
-                <View style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Exit Game</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
+                {gameState === "won" ? "You Won!" : "You Lost!"}
+              </Text>
+              <Text style={styles.resultDetails}>
+                You chose {selectedNumber} - Dice rolled {diceNumber}
+              </Text>
+              {gameState === "won" && (
+                <Text style={styles.amountWon}>
+                  +₦{(Number.parseFloat(betAmount) * 2).toFixed(2)}
+                </Text>
+              )}
+              {gameState === "lost" && (
+                <Text style={styles.amountLost}>
+                  -₦{Number.parseFloat(betAmount).toFixed(2)}
+                </Text>
+              )}
+
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  onPress={resetGame}
+                  style={styles.actionButtonContainer}
+                >
+                  <LinearGradient
+                    colors={["#6a11cb", "#2575fc"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.actionButtonText}>Play Again</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={[
+                    styles.actionButtonContainer,
+                    styles.secondaryButtonContainer,
+                  ]}
+                >
+                  <View style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>Exit Game</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
+        </ScrollView>
       </View>
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

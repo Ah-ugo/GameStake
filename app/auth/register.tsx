@@ -1,72 +1,87 @@
-"use client"
+"use client";
 
-import { useRouter } from "expo-router"
-import { useState } from "react"
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
-} from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
-import { Ionicons } from "@expo/vector-icons"
-import { useAuth } from "@/context/auth-context"
-import Animated, { FadeInDown } from "react-native-reanimated"
-import * as Haptics from "expo-haptics"
-import { useToast } from "@/context/toast-context"
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 export default function RegisterScreen() {
-  const router = useRouter()
-  const { register } = useAuth()
-  const { showToast } = useToast()
-  const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+  const router = useRouter();
+  const { register } = useAuth();
+  const { showToast } = useToast();
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async () => {
     if (!username || !email || !password || !confirmPassword) {
-      showToast("Please fill in all fields", "error")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-      return
+      showToast("Please fill in all fields", "error");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
 
     if (password !== confirmPassword) {
-      showToast("Passwords do not match", "error")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-      return
+      showToast("Passwords do not match", "error");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
 
     try {
-      setIsLoading(true)
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-      await register(username, email, password)
-      router.replace("/home")
-    } catch (err) {
-      console.error(err)
-      showToast(err.message || "Registration failed. Please try again.", "error")
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+      setIsLoading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await register(username, email, password);
+      router.replace("/home");
+    } catch (err: any) {
+      console.error(err);
+      showToast(
+        err.message || "Registration failed. Please try again.",
+        "error"
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Animated.View entering={FadeInDown.duration(600).springify()} style={styles.header}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View
+          entering={FadeInDown.duration(600).springify()}
+          style={styles.header}
+        >
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Sign up to get started</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(600).springify()} style={styles.form}>
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(600).springify()}
+          style={styles.form}
+        >
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color="#9e9e9e" />
             <TextInput
@@ -102,8 +117,15 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#9e9e9e" />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#9e9e9e"
+              />
             </TouchableOpacity>
           </View>
 
@@ -119,19 +141,30 @@ export default function RegisterScreen() {
             />
           </View>
 
-          <TouchableOpacity onPress={handleRegister} disabled={isLoading} style={styles.buttonContainer}>
+          <TouchableOpacity
+            onPress={handleRegister}
+            disabled={isLoading}
+            style={styles.buttonContainer}
+          >
             <LinearGradient
               colors={["#6a11cb", "#2575fc"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.button}
             >
-              {isLoading ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.buttonText}>Sign Up</Text>}
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.buttonText}>Sign Up</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(400).duration(600).springify()} style={styles.footer}>
+        <Animated.View
+          entering={FadeInDown.delay(400).duration(600).springify()}
+          style={styles.footer}
+        >
           <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity onPress={() => router.push("/auth/login")}>
             <Text style={styles.signInText}>Sign In</Text>
@@ -139,7 +172,7 @@ export default function RegisterScreen() {
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -217,4 +250,4 @@ const styles = StyleSheet.create({
     fontFamily: "Poppins-SemiBold",
     marginLeft: 4,
   },
-})
+});

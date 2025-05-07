@@ -1,5 +1,6 @@
-"use client";
-
+import { useToast } from "@/context/toast-context";
+import { useWallet } from "@/context/wallet-context";
+import { api } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +10,7 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Easing,
+  Platform,
   Animated as RNAnimated,
   StyleSheet,
   Text,
@@ -24,9 +26,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Circle, G, Path, Svg, Text as SvgText } from "react-native-svg";
-import { useToast } from "../../context/toast-context";
-import { useWallet } from "../../context/wallet-context";
-import { api } from "../../lib/api";
+
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 export default function CoinTossScreen() {
   const router = useRouter();
@@ -45,7 +49,7 @@ export default function CoinTossScreen() {
   }, []);
 
   // Fix the coin flip animation to ensure it shows the correct side
-  const flipCoin = (resultSide) => {
+  const flipCoin = (resultSide: any) => {
     flipAnimation.setValue(0);
 
     // Determine the final rotation based on the result
@@ -101,8 +105,8 @@ export default function CoinTossScreen() {
     }
 
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -345,13 +349,23 @@ export default function CoinTossScreen() {
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

@@ -80,7 +80,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const toggleSetting = (setting, value) => {
+  const toggleSetting = (setting: any, value: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     switch (setting) {
       case "notifications":

@@ -41,7 +41,7 @@ export default function LoginScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       await login(email, password);
       router.replace("/home");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       showToast(err.message || "Invalid email or password", "error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

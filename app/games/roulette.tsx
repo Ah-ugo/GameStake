@@ -1,5 +1,6 @@
-"use client";
-
+import { useToast } from "@/context/toast-context";
+import { useWallet } from "@/context/wallet-context";
+import { api } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +10,7 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,11 +30,12 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Circle, G, Line, Path, Svg, Text as SvgText } from "react-native-svg";
-import { useToast } from "../../context/toast-context";
-import { useWallet } from "../../context/wallet-context";
-import { api } from "../../lib/api";
 
 const { width } = Dimensions.get("window");
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 // Roulette numbers and colors
 const ROULETTE_NUMBERS = [
@@ -40,7 +43,7 @@ const ROULETTE_NUMBERS = [
   16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
 ];
 
-const getNumberColor = (number) => {
+const getNumberColor = (number: any) => {
   if (number === 0) return "#00C853"; // Green for 0
   const redNumbers = [
     1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
@@ -158,7 +161,7 @@ export default function RouletteScreen() {
   });
 
   // This function calculates the exact angle needed to position a specific number at the top
-  const getAngleForNumber = (number) => {
+  const getAngleForNumber = (number: any) => {
     const numberIndex = ROULETTE_NUMBERS.indexOf(number);
     if (numberIndex === -1) {
       console.error(`Number ${number} not found in roulette wheel!`);
@@ -173,7 +176,7 @@ export default function RouletteScreen() {
     return -(numberIndex * segmentAngle);
   };
 
-  function animateWheel(finalNumber) {
+  function animateWheel(finalNumber: any) {
     // Reset any previous animations
     wheelRotation.value = 0;
 
@@ -205,8 +208,8 @@ export default function RouletteScreen() {
 
   const handleBet = async () => {
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -686,13 +689,23 @@ export default function RouletteScreen() {
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

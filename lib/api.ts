@@ -1,10 +1,38 @@
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import { Platform } from "react-native";
+
+// Platform-agnostic storage implementation
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      return typeof window !== "undefined" ? localStorage.getItem(key) : null;
+    }
+    return AsyncStorage.getItem(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(key, value);
+      }
+      return;
+    }
+    await AsyncStorage.setItem(key, value);
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(key);
+      }
+      return;
+    }
+    await AsyncStorage.removeItem(key);
+  },
+};
 
 // Create an axios instance
 export const api = axios.create({
   baseURL: "https://gameapi2-sni6.onrender.com",
-  // baseURL: "https://api.betmaster.com", // Use this in production
   headers: {
     "Content-Type": "application/json",
   },
@@ -15,7 +43,7 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await storage.getItem("token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -34,13 +62,19 @@ api.interceptors.response.use(
     const originalRequest = error?.config;
 
     // Handle unauthorized (token expired or invalid)
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
       originalRequest._retry = true;
 
       try {
-        // If refresh token logic is implemented, add it here.
-        await AsyncStorage.removeItem("token");
+        // Clear authentication storage
+        await storage.removeItem("token");
         delete api.defaults.headers.common["Authorization"];
+
+        // If you implement refresh tokens later, add logic here
         return Promise.reject(error);
       } catch (refreshError) {
         return Promise.reject(refreshError);

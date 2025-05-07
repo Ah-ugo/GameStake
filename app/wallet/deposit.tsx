@@ -62,7 +62,7 @@ export default function DepositScreen() {
         "Your deposit request has been submitted. Please transfer the funds to the provided bank account. Once confirmed by admin, your balance will be updated.",
         [{ text: "OK", onPress: () => router.back() }]
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setError(
         err.response?.data?.detail ||
@@ -75,7 +75,7 @@ export default function DepositScreen() {
     }
   };
 
-  const copyToClipboard = async (text) => {
+  const copyToClipboard = async (text: any) => {
     await Clipboard.setStringAsync(text);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     showToast("Copied to clipboard", "success");

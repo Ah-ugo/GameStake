@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -38,6 +39,10 @@ import { useWallet } from "../../context/wallet-context";
 import { api } from "../../lib/api";
 
 const { width } = Dimensions.get("window");
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 // Slot symbols
 const SYMBOLS = ["🍒", "🍋", "🍊", "🍇", "💎", "7️⃣", "🎰"];
@@ -126,7 +131,7 @@ export default function SlotMachineScreen() {
     };
   });
 
-  const animateReels = (finalSymbols) => {
+  const animateReels = (finalSymbols: any) => {
     console.log("Animating reels with symbols:", finalSymbols);
 
     // Pull the lever
@@ -187,7 +192,7 @@ export default function SlotMachineScreen() {
   };
 
   // Function to get a random mock result for offline mode
-  const getMockResult = (betAmount) => {
+  const getMockResult = (betAmount: any) => {
     const randomIndex = Math.floor(Math.random() * MOCK_RESULTS.length);
     const mockResult = MOCK_RESULTS[randomIndex];
 
@@ -374,8 +379,8 @@ export default function SlotMachineScreen() {
     }
 
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -732,13 +737,23 @@ export default function SlotMachineScreen() {
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

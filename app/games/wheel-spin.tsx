@@ -1,5 +1,6 @@
-"use client";
-
+import { useToast } from "@/context/toast-context";
+import { useWallet } from "@/context/wallet-context";
+import { api } from "@/lib/api";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,12 +10,14 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   FadeIn,
@@ -28,11 +31,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Circle, G, Path, Svg, Text as SvgText } from "react-native-svg";
-import { useToast } from "../../context/toast-context";
-import { useWallet } from "../../context/wallet-context";
-import { api } from "../../lib/api";
 
 const { width } = Dimensions.get("window");
+
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 // Wheel segments with multipliers
 const WHEEL_SEGMENTS = [
@@ -75,7 +80,7 @@ export default function WheelSpinScreen() {
     };
   });
 
-  const animateWheel = (finalSegment) => {
+  const animateWheel = (finalSegment: any) => {
     // Calculate the exact angle needed to land on the center of the segment
     const segmentAngle = 360 / WHEEL_SEGMENTS.length;
     const segmentIndex = WHEEL_SEGMENTS.findIndex(
@@ -102,8 +107,8 @@ export default function WheelSpinScreen() {
 
   const handleSpin = async () => {
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -150,7 +155,7 @@ export default function WheelSpinScreen() {
           showToast(`You lost ₦${amount.toFixed(2)}`, "error");
         }
       }, 5500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       setError(
         err.response?.data?.detail || "Something went wrong. Please try again."
@@ -193,176 +198,187 @@ export default function WheelSpinScreen() {
             <Ionicons name="caret-down" size={40} color="#ffffff" />
           </Animated.View>
         </View>
-
-        {gameState === "idle" && (
-          <Animated.View
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(300)}
-            style={styles.controlsContainer}
-          >
-            <Text style={styles.gameDescription}>
-              Spin the wheel and win up to 5x your bet! Land on a colored
-              segment to win the corresponding multiplier.
-            </Text>
-
-            <View style={styles.multiplierContainer}>
-              <View style={styles.multiplierItem}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    { backgroundColor: "#4CAF50" },
-                  ]}
-                />
-                <Text style={styles.multiplierText}>1.5x</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    { backgroundColor: "#2196F3" },
-                  ]}
-                />
-                <Text style={styles.multiplierText}>2x</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    { backgroundColor: "#FF9800" },
-                  ]}
-                />
-                <Text style={styles.multiplierText}>3x</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    { backgroundColor: "#9C27B0" },
-                  ]}
-                />
-                <Text style={styles.multiplierText}>5x</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <View
-                  style={[
-                    styles.colorIndicator,
-                    { backgroundColor: "#F44336" },
-                  ]}
-                />
-                <Text style={styles.multiplierText}>0x</Text>
-              </View>
-            </View>
-
-            <Text style={styles.betLabel}>Enter bet amount:</Text>
-            <View style={styles.inputContainer}>
-              <Text style={styles.dollarSign}>₦</Text>
-              <TextInput
-                style={styles.betInput}
-                keyboardType="numeric"
-                value={betAmount}
-                onChangeText={setBetAmount}
-                placeholder="0.00"
-                placeholderTextColor="#9e9e9e"
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TouchableOpacity
-              onPress={handleSpin}
-              style={styles.spinButtonContainer}
+        <ScrollView>
+          {gameState === "idle" && (
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.controlsContainer}
             >
-              <LinearGradient
-                colors={["#00C9FF", "#92FE9D"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.spinButton}
-              >
-                <Text style={styles.spinButtonText}>Spin Wheel</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {gameState === "playing" && (
-          <Animated.View
-            entering={FadeIn.duration(300)}
-            exiting={FadeOut.duration(300)}
-            style={styles.loadingContainer}
-          >
-            <Text style={styles.loadingText}>Spinning wheel...</Text>
-          </Animated.View>
-        )}
-
-        {(gameState === "won" || gameState === "lost") && (
-          <Animated.View
-            entering={SlideInDown.duration(500).springify()}
-            exiting={SlideOutDown.duration(500)}
-            style={styles.resultContainer}
-          >
-            <Text
-              style={[
-                styles.resultText,
-                gameState === "won"
-                  ? styles.wonResultText
-                  : styles.lostResultText,
-              ]}
-            >
-              {gameState === "won" ? "You Won!" : "You Lost!"}
-            </Text>
-            <Text style={styles.resultDetails}>
-              Multiplier: {result?.multiplier}x
-            </Text>
-            {gameState === "won" && (
-              <Text style={styles.amountWon}>
-                +₦{result?.amount.toFixed(2)}
+              <Text style={styles.gameDescription}>
+                Spin the wheel and win up to 5x your bet! Land on a colored
+                segment to win the corresponding multiplier.
               </Text>
-            )}
-            {gameState === "lost" && (
-              <Text style={styles.amountLost}>
-                -₦{Number.parseFloat(betAmount).toFixed(2)}
-              </Text>
-            )}
 
-            <View style={styles.actionButtons}>
+              <View style={styles.multiplierContainer}>
+                <View style={styles.multiplierItem}>
+                  <View
+                    style={[
+                      styles.colorIndicator,
+                      { backgroundColor: "#4CAF50" },
+                    ]}
+                  />
+                  <Text style={styles.multiplierText}>1.5x</Text>
+                </View>
+                <View style={styles.multiplierItem}>
+                  <View
+                    style={[
+                      styles.colorIndicator,
+                      { backgroundColor: "#2196F3" },
+                    ]}
+                  />
+                  <Text style={styles.multiplierText}>2x</Text>
+                </View>
+                <View style={styles.multiplierItem}>
+                  <View
+                    style={[
+                      styles.colorIndicator,
+                      { backgroundColor: "#FF9800" },
+                    ]}
+                  />
+                  <Text style={styles.multiplierText}>3x</Text>
+                </View>
+                <View style={styles.multiplierItem}>
+                  <View
+                    style={[
+                      styles.colorIndicator,
+                      { backgroundColor: "#9C27B0" },
+                    ]}
+                  />
+                  <Text style={styles.multiplierText}>5x</Text>
+                </View>
+                <View style={styles.multiplierItem}>
+                  <View
+                    style={[
+                      styles.colorIndicator,
+                      { backgroundColor: "#F44336" },
+                    ]}
+                  />
+                  <Text style={styles.multiplierText}>0x</Text>
+                </View>
+              </View>
+
+              <Text style={styles.betLabel}>Enter bet amount:</Text>
+              <View style={styles.inputContainer}>
+                <Text style={styles.dollarSign}>₦</Text>
+                <TextInput
+                  style={styles.betInput}
+                  keyboardType="numeric"
+                  value={betAmount}
+                  onChangeText={setBetAmount}
+                  placeholder="0.00"
+                  placeholderTextColor="#9e9e9e"
+                />
+              </View>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
               <TouchableOpacity
-                onPress={resetGame}
-                style={styles.actionButtonContainer}
+                onPress={handleSpin}
+                style={styles.spinButtonContainer}
               >
                 <LinearGradient
-                  colors={["#6a11cb", "#2575fc"]}
+                  colors={["#00C9FF", "#92FE9D"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={styles.actionButton}
+                  style={styles.spinButton}
                 >
-                  <Text style={styles.actionButtonText}>Play Again</Text>
+                  <Text style={styles.spinButtonText}>Spin Wheel</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.back()}
+            </Animated.View>
+          )}
+
+          {gameState === "playing" && (
+            <Animated.View
+              entering={FadeIn.duration(300)}
+              exiting={FadeOut.duration(300)}
+              style={styles.loadingContainer}
+            >
+              <Text style={styles.loadingText}>Spinning wheel...</Text>
+            </Animated.View>
+          )}
+
+          {(gameState === "won" || gameState === "lost") && (
+            <Animated.View
+              entering={SlideInDown.duration(500).springify()}
+              exiting={SlideOutDown.duration(500)}
+              style={styles.resultContainer}
+            >
+              <Text
                 style={[
-                  styles.actionButtonContainer,
-                  styles.secondaryButtonContainer,
+                  styles.resultText,
+                  gameState === "won"
+                    ? styles.wonResultText
+                    : styles.lostResultText,
                 ]}
               >
-                <View style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Exit Game</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        )}
+                {gameState === "won" ? "You Won!" : "You Lost!"}
+              </Text>
+              <Text style={styles.resultDetails}>
+                Multiplier: {result?.multiplier}x
+              </Text>
+              {gameState === "won" && (
+                <Text style={styles.amountWon}>
+                  +₦{result?.amount.toFixed(2)}
+                </Text>
+              )}
+              {gameState === "lost" && (
+                <Text style={styles.amountLost}>
+                  -₦{Number.parseFloat(betAmount).toFixed(2)}
+                </Text>
+              )}
+
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  onPress={resetGame}
+                  style={styles.actionButtonContainer}
+                >
+                  <LinearGradient
+                    colors={["#6a11cb", "#2575fc"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.actionButton}
+                  >
+                    <Text style={styles.actionButtonText}>Play Again</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={[
+                    styles.actionButtonContainer,
+                    styles.secondaryButtonContainer,
+                  ]}
+                >
+                  <View style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>Exit Game</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          )}
+        </ScrollView>
       </View>
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>

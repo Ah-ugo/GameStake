@@ -12,6 +12,7 @@ import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -34,6 +35,10 @@ import { Circle, G, Path, Rect, Svg } from "react-native-svg";
 
 const { width } = Dimensions.get("window");
 const CHOICES = ["rock", "paper", "scissors"];
+const Lottie = Platform.select({
+  native: () => require("lottie-react-native").default,
+  default: () => require("@lottiefiles/dotlottie-react").DotLottieReact,
+})();
 
 export default function RockPaperScissorsScreen() {
   const router = useRouter();
@@ -66,7 +71,7 @@ export default function RockPaperScissorsScreen() {
     };
   });
 
-  const animateChoice = (isPlayer) => {
+  const animateChoice = (isPlayer: any) => {
     const scaleValue = isPlayer ? playerScale : computerScale;
     scaleValue.value = withSequence(
       withTiming(1.2, { duration: 200, easing: Easing.bounce }),
@@ -81,8 +86,8 @@ export default function RockPaperScissorsScreen() {
     }
 
     const amount = Number.parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid bet amount");
+    if (isNaN(amount) || amount < 10) {
+      setError("Please enter a valid bet amount greater than or equal to ₦10");
       return;
     }
 
@@ -409,13 +414,23 @@ export default function RockPaperScissorsScreen() {
 
       {gameState === "won" && (
         <View style={styles.confettiContainer}>
-          <LottieView
-            ref={confettiRef}
-            source={require("../../assets/animations/confetti.json")}
-            style={styles.confetti}
-            loop={false}
-            autoPlay={false}
-          />
+          {Platform.OS === "web" ? (
+            <Lottie
+              ref={confettiRef}
+              src={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoplay={false}
+            />
+          ) : (
+            <LottieView
+              ref={confettiRef}
+              source={require("../../assets/animations/confetti.json")}
+              style={styles.confetti}
+              loop={false}
+              autoPlay={false}
+            />
+          )}
         </View>
       )}
     </SafeAreaView>
